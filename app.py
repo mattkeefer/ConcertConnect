@@ -73,3 +73,4 @@ def clique(clique_id):
 def profile(username):
         return render_template('profile.html', username=username)
 
+app.run()
