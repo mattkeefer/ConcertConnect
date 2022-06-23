@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+    <h1>{{concert['name']}}</h1>
+    <ul>
+        <li>Location: {{concert['location']}}</li>
+        <li>Date: {{concert['concertDate']}}</li>
+        {% if concert['genre'] != None %}
+        <li>Genre: {{concert['genre']}}</li>
+        {% endif %}
+        {% if concert['price'] != None %}
+        <li>Price: ${{concert['price']}}</li>
+        {% endif %}
+        {% if concert['minAge'] != None %}
+        <li>Ages: {{concert['minAge']}}+</li>
+        {% else %}
+        <li>All ages</li>
+        {% endif %}
+    </ul>
+{% endblock %}

@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+    <body>
+        <h1>Please register</h1>
+        <p>Or <a href="/login">login</a> if you have an existing account</p>
+        <form action="" method="post">
+            <input type="text" placeholder="Username" name="username" value="{{ request.form.username }}">
+            <input class="btn btn-default" type="submit" value="Register">
+        </form>
+        {% if error %}
+            <p class="error"><strong>Error:</strong> {{ error }}
+        {% endif %}
+    </body>
+</html>

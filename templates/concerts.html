@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+    <h1>Concerts</h1>
+    <h2>Upcoming Shows</h2>
+    {% for concert in concerts %}
+    <ul>
+        <li><a href="/concert/{{concert['concertId']}}">{{concert['name']}}</a>: {{concert['location']}}, {{concert['concertDate']}}</li>
+    </ul>
+    {% endfor %}
+{% endblock %}
