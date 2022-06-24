@@ -1,9 +1,10 @@
-from flask import Flask, render_template, redirect, url_for, request
+from flask import Flask, render_template, redirect, url_for, request, g
 import pymysql
+from credentials import db_username, db_password
 
 app = Flask(__name__)
 
-db = pymysql.connect(host='localhost', user='root', password='Hershey!likes2catnap', db='concertconnect', charset='utf8mb4', cursorclass=pymysql.cursors.DictCursor)
+db = pymysql.connect(host='localhost', user=db_username, password=db_password, db='concertconnect', charset='utf8mb4', cursorclass=pymysql.cursors.DictCursor)
 cur = db.cursor()
 
 
@@ -11,9 +12,9 @@ cur = db.cursor()
 def entry():
         return render_template('entry.html')
 
-@app.route('/home')
-def index():
-        return render_template('index.html')
+@app.route('/<username>')
+def index(username):
+        return render_template('index.html', username=username)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -44,33 +45,142 @@ def login():
                 if num < 1:
                         error = 'Invalid Credentials. Please try again.'
                 else:
-                        return redirect(url_for('index'))
+                        return redirect(f'/{usr}')
         return render_template('login.html', error=error)
 
-@app.route('/concert')
-def concerts():
+@app.route('/<username>/concert')
+def concerts(username):
         sql = 'SELECT * FROM concert AS concerts ORDER BY concertDate ASC'
         cur.execute(sql)
-        result = cur.fetchall()
-        return render_template('concerts.html', concerts=result)
+        concerts = cur.fetchall()
+        sql = f'SELECT * FROM location AS locations'
+        cur.execute(sql)
+        locations = cur.fetchall()
+        return render_template('concerts.html', concerts=concerts, locations=locations, username=username)
 
-@app.route('/concert/<int:concert_id>')
-def concert(concert_id):
-        sql = f'SELECT * FROM concert AS concerts WHERE concertId = {concert_id}'
+
+@app.route('/<username>/concert/<int:concert_id>', methods=['GET', 'POST'])
+def concert(username, concert_id):
+        sql = f'SELECT * FROM concert WHERE concertId = {concert_id}'
         cur.execute(sql)
         result = cur.fetchall()
-        return render_template('concert.html', concert=result[0])
+        concert = result[0]
+        venId = concert['location']
+        sql = f'SELECT * FROM location WHERE venueId = {venId}'
+        cur.execute(sql)
+        result = cur.fetchall()
+        location = result[0]
+        cur.callproc('artistsPerforming', [concert_id])
+        artists = cur.fetchall()
+        sql = f'SELECT isAttending("{username}", {concert_id}) AS attending'
+        cur.execute(sql)
+        result = cur.fetchall()
+        isAttending = result[0]['attending']
+        cur.callproc('cliquesWithUserNotShared', [f'{username}', concert_id])
+        cliques = cur.fetchall()
+        print(cliques)
 
-@app.route('/clique')
-def cliques():
-        return render_template('cliques.html')
+        error = None
+        if request.method == 'POST':
+                clique = request.form['clique_name']
+                print(clique)
+                try:
+                        cur.callproc('shareConcert', [concert_id, clique])
+                        db.commit()
+                        return redirect(f'/{username}/clique/{clique}')
+                except pymysql.Error:
+                        error = 'An error occurred.'
+                        db.rollback()
 
-@app.route('/clique/<int:clique_id>')
-def clique(clique_id):
-        return f'<h1>Clique {clique_id}</h1>'
+        return render_template('concert.html', concert=concert, location=location, artists=artists, isAttending=isAttending, cliques=cliques, username=username, error=error)
 
-@app.route('/profile/<username>')
+
+@app.route('/<username>/concert/<int:concert_id>/attend')
+def attend(username, concert_id):
+        try:
+                cur.callproc('attending', [f'{username}', concert_id])
+                db.commit()
+        except pymysql.Error:
+                db.rollback()
+        return redirect(f'/{username}/concert')
+
+@app.route('/<username>/concert/<int:concert_id>/not-attend')
+def not_attend(username, concert_id):
+        try:
+                cur.callproc('notAttending', [f'{username}', concert_id])
+                db.commit()
+        except pymysql.Error:
+                db.rollback()
+        return redirect(f'/{username}/concert')
+
+@app.route('/<username>/clique', methods=['GET', 'POST'])
+def cliques(username):
+        cur.callproc('cliquesWithUser', [f'{username}'])
+        member = cur.fetchall()
+        cur.callproc('cliqueMembershipWithoutUser', [f'{username}'])
+        cliques = cur.fetchall()
+        error = None
+        if request.method == 'POST':
+                name = request.form['name']
+                genre = request.form['genre']
+                try:
+                        cur.callproc('createClique', [f'{username}', f'{name}', f'{genre}'])
+                        db.commit()
+                        return redirect(f'/{username}/clique')
+                except pymysql.Error:
+                        error = 'Invalid clique name or genre.'
+                        db.rollback()
+        return render_template('cliques.html', member=member, cliques=cliques, username=username, error=error)
+
+@app.route('/<username>/clique/<int:clique_id>')
+def clique(username, clique_id):
+        sql = f'SELECT * FROM clique WHERE cliqueId = {clique_id}'
+        cur.execute(sql)
+        result = cur.fetchall()
+        clique = result[0]
+        cur.callproc('usersInClique', [clique_id])
+        members = cur.fetchall()
+        cur.callproc('concertsSharedWithClique', [clique_id])
+        shared = cur.fetchall()
+        return render_template('clique.html', clique=clique, members=members, shared=shared, username=username)
+
+@app.route('/<username>/clique/<int:clique_id>/join')
+def join(username, clique_id):
+        try:
+                cur.callproc('joinClique', [f'{username}', clique_id])
+                db.commit()
+        except pymysql.Error:
+                db.rollback()
+        return redirect(f'/{username}/clique')
+
+@app.route('/<username>/clique/<int:clique_id>/leave')
+def leave(username, clique_id):
+        try:
+                cur.callproc('leaveClique', [f'{username}', clique_id])
+                db.commit()
+        except pymysql.Error:
+                db.rollback()
+        return redirect(f'/{username}/clique')
+
+@app.route('/<username>/profile', methods=['GET', 'POST'])
 def profile(username):
-        return render_template('profile.html', username=username)
+        sql = f'SELECT * FROM user WHERE username = "{username}"'
+        cur.execute(sql)
+        user = cur.fetchall()
+        cur.callproc('concertsAttending', [f'{username}'])
+        attending = cur.fetchall()
+        cur.callproc('cliquesWithUser', [f'{username}'])
+        member = cur.fetchall()
+        error = None
+        if request.method == 'POST': 
+                name = request.form['name']
+                age = request.form['age']
+                try:
+                        cur.callproc('updateUserInfo', [username, name, age])
+                        db.commit()
+                        return redirect(f'/{username}/profile')
+                except pymysql.Error:
+                        error = 'Invalid name or age.'
+                        db.rollback()
+        return render_template('profile.html', user=user[0], attending=attending, member=member, username=username, error=error)
 
-app.run()

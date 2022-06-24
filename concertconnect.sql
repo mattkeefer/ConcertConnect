@@ -1,3 +1,4 @@
+-- DROP DATABASE concertconnect;
 CREATE DATABASE IF NOT EXISTS concertconnect;
 USE concertconnect;
 
@@ -39,7 +40,7 @@ CREATE TABLE IF NOT EXISTS concert (
     minAge INT DEFAULT NULL,
     price DECIMAL(6, 2) DEFAULT NULL,
     concertDate DATE NOT NULL,
-    location INT DEFAULT NULL REFERENCES location(venueId) ON UPDATE RESTRICT ON DELETE RESTRICT,
+    location INT NOT NULL REFERENCES location(venueId) ON UPDATE RESTRICT ON DELETE RESTRICT,
     genre VARCHAR(64) DEFAULT NULL
 );
 INSERT INTO concert (name, minAge, price, concertDate, location, genre)
@@ -56,25 +57,19 @@ CREATE TABLE IF NOT EXISTS user (
 );
 
 
+DROP TABLE IF EXISTS clique;
 CREATE TABLE IF NOT EXISTS clique (
 	cliqueId INT PRIMARY KEY AUTO_INCREMENT,
-    genre VARCHAR(64) DEFAULT NULL
+    name VARCHAR(64) NOT NULL UNIQUE,
+    genre VARCHAR(64) NOT NULL
 );
-
-
-DROP TABLE IF EXISTS setlist;
-CREATE TABLE IF NOT EXISTS setlist (
-	setlistId INT PRIMARY KEY AUTO_INCREMENT,
-    songs text NOT NULL
-);
-INSERT INTO setlist (songs)
-	VALUES	('Fakin\' It, ...'),
-			('Location, ...'),
-			('Believer, Enemy, ...'),
-            ('Thrift Shop, ...');
+INSERT INTO clique (name, genre)
+	VALUES	('Old Heads', 'Hip-hop'),
+			('Pop Fiends', 'Pop');
 
 
 -- RELATIONS
+
 
 CREATE TABLE IF NOT EXISTS attends (
 	user VARCHAR(64) NOT NULL REFERENCES user(username) ON UPDATE RESTRICT ON DELETE RESTRICT,								-- PUT MORE THOUGHT INTO UPDATE AND DELETE
@@ -82,25 +77,36 @@ CREATE TABLE IF NOT EXISTS attends (
     PRIMARY KEY (user, concert)
 );
 
+
+DROP TABLE IF EXISTS performs;
 CREATE TABLE IF NOT EXISTS performs (
 	artist INT NOT NULL REFERENCES artist(artistId) ON UPDATE RESTRICT ON DELETE RESTRICT,
-    setlist INT NOT NULL REFERENCES setlist(setlistId) ON UPDATE RESTRICT ON DELETE RESTRICT,
     concert INT NOT NULL REFERENCES concert(concertId) ON UPDATE RESTRICT ON DELETE RESTRICT,
-    PRIMARY KEY (artist, setlist, concert)
+    PRIMARY KEY (artist, concert)
 );
+INSERT INTO performs
+	VALUES	(1, 1), (2, 1),
+            (3, 2),
+            (4, 3),
+            (5, 4), (6,4);
+
 
 CREATE TABLE IF NOT EXISTS shares (
-	user VARCHAR(64) NOT NULL REFERENCES user(username) ON UPDATE RESTRICT ON DELETE RESTRICT,
     concert INT NOT NULL REFERENCES concert(concertId) ON UPDATE RESTRICT ON DELETE RESTRICT,
     clique INT NOT NULL REFERENCES clique(cliqueId) ON UPDATE RESTRICT ON DELETE RESTRICT,
-    PRIMARY KEY (user, concert, clique)
+    PRIMARY KEY (concert, clique)
 );
+
 
 CREATE TABLE IF NOT EXISTS member (
 	user VARCHAR(64) NOT NULL REFERENCES user(username) ON UPDATE RESTRICT ON DELETE RESTRICT,
     clique INT NOT NULL REFERENCES clique(cliqueId) ON UPDATE RESTRICT ON DELETE RESTRICT,
     PRIMARY KEY (user, clique)
 );
+
+
+
+
 
 
 
@@ -121,19 +127,117 @@ DELIMITER ;
 
 SELECT numUsersWithUsername('Matt');
 SELECT * FROM user;
-call createUser('Alex');
 
-INSERT INTO user VALUES ('Matt','Matt Keefer',19);
+INSERT INTO user VALUES ('matt','Matt Keefer',19);
+
+SELECT * FROM clique;
+SELECT * FROM shares WHERE clique = 1;
+SELECT * FROM member;
+SELECT * FROM clique
+		LEFT OUTER JOIN (SELECT clique, COUNT(*) AS members FROM member GROUP BY clique) AS num ON cliqueId = clique;
+        
+SELECT * FROM clique
+		JOIN (SELECT * FROM member WHERE user = 'matt') AS members
+        ON cliqueId = clique;
+-- call cliquesWithUser('john');
+
+
+SELECT clique, COUNT(*) AS members FROM member GROUP BY clique;
+-- CALL joinClique('john', 2);
 
 SELECT * FROM concert;
 SELECT * FROM concert AS concerts WHERE concertId = 3;
-INSERT INTO concert (name, concertDate) VALUES ('Governer\'s Ball New York', '2022-10-12');
+SELECT * FROM attends;
+SELECT * FROM shares;
+-- call notAttending('john', 1);
+-- SELECT isAttending('matt', 1);
+
+-- call updateUserInfo('Matt', 'Matt Keefer', 19);
+-- call attending('Matt', 4);
+-- call artistsPerforming(1);
+call concertsAttending('matt');
+call cliqueMembership();
+
+-- call leaveClique('john', 2);
+SELECT * FROM clique
+		LEFT OUTER JOIN 
+			(SELECT clique, COUNT(*) AS members FROM member GROUP BY clique) AS num 
+			ON cliqueId = clique
+		WHERE cliqueId NOT IN (SELECT clique FROM member WHERE user = 'matt');
+        
+SELECT * FROM user
+		JOIN (SELECT * FROM member WHERE clique = 1) AS members
+        ON username = user;
+
+SELECT shares.*, concert.name FROM shares
+		JOIN concert ON concert = concertId
+        WHERE clique = 1;
+        
+        
+SELECT * FROM clique
+		JOIN member ON cliqueId = clique
+        WHERE user = 'matt' AND cliqueId NOT IN (SELECT clique FROM shares WHERE clique = 1 AND concert = 2);
+
 
 
 DELIMITER //
-CREATE PROCEDURE createUser (
-	usr VARCHAR(64)
-) 
+
+CREATE PROCEDURE cliquesWithUserNotShared (
+	usr VARCHAR(64),
+    con INT)
 BEGIN
-	INSERT INTO user (username) VALUES (usr);
+	SELECT * FROM clique
+		JOIN member ON cliqueId = clique
+        WHERE user = usr AND cliqueId NOT IN (SELECT clique FROM shares WHERE concert = con);
+END//
+
+
+CREATE PROCEDURE cliquesWithUser (
+	usr VARCHAR(64))
+BEGIN
+	SELECT * FROM clique
+		JOIN member ON cliqueId = clique
+        HAVING member.user = usr;
+END//
+
+
+CREATE PROCEDURE concertsSharedWithClique (
+	clq INT)
+BEGIN
+	SELECT shares.*, concert.name FROM shares
+		JOIN concert ON concert = concertId
+        WHERE clique = clq;
+END//
+
+
+
+
+
+CREATE PROCEDURE shareConcert (
+    con INT,
+    clq INT)
+BEGIN
+	INSERT INTO shares (concert, clique)
+		VALUES (con, clq);
+END//
+
+
+
+
+
+CREATE PROCEDURE createClique (
+	usr VARCHAR(64),
+	clique_name VARCHAR(64),
+    clique_genre TEXT)
+BEGIN
+	DECLARE new_clique_id INT;
+	IF (clique_name = '' OR clique_genre = '') THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid name or genre';
+    END IF;
+	INSERT INTO clique (name, genre)
+		VALUES (clique_name, clique_genre);
+	SELECT cliqueId FROM clique WHERE name = clique_name AND genre = clique_genre
+		INTO new_clique_id;
+	INSERT INTO member (user, clique)
+		VALUES (usr, new_clique_id);
 END//

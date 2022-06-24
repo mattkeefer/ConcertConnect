@@ -1,5 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
+    <div>
+        <a href="/{{username}}">Home</a> | 
+        <a href="/{{username}}/concert">Concerts</a> | 
+        <a href="/{{username}}/clique">Cliques</a> | 
+        <a href="/{{username}}/profile">Profile</a> | 
+        <a href="/">Sign Out</a>
+    </div>
     <h1>Welcome to Concert Connect!</h1>
     <p>Navigate using the links above!</p>
 {% endblock %}

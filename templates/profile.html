@@ -1,4 +1,41 @@
 {% extends "base.html" %}
 {% block content %}
+    <div>
+        <a href="/{{username}}">Home</a> | 
+        <a href="/{{username}}/concert">Concerts</a> | 
+        <a href="/{{username}}/clique">Cliques</a> | 
+        <a href="/{{username}}/profile">Profile</a> | 
+        <a href="/">Sign Out</a>
+    </div>
     <h1>Profile</h1>
+    <h2>Hi, {{username}}</h2>
+    <ul>
+        <li>Username: {{username}}</li>
+        <li>Display Name: {{user['name']}}</li>
+        <li>Age: {{user['age']}}</li>
+    </ul>
+    <h2>Update information below:</h2>
+    <form action="" method="post">
+        <input type="text" placeholder="Name" name="name" value="{{ request.form.name }}">
+        <input type="number" placeholder="Age" name="age" value="{{ request.form.age }}">
+        <input class="btn btn-default" type="submit" value="Save Changes">
+    </form>
+    {% if error %}
+        <p class="error"><strong>Error:</strong> {{ error }}
+    {% endif %}
+    <br>
+    {% if attending | length > 0 %}
+        <h2>Concerts currently attending:</h2>
+    {% endif %}
+    <ul>
+        {% for concert in attending %}
+            <li><a href="/{{username}}/concert/{{concert['concert']}}">{{concert['name']}}</a></li>
+        {% endfor %}
+    </ul>
+    <h2>Your cliques:</h2>
+    <ul>
+        {% for clq in member %}
+            <li><a href="/{{username}}/clique/{{clq['cliqueId']}}">{{clq['name']}}</a></li>
+        {% endfor %}
+    </ul>
 {% endblock %}

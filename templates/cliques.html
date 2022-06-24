@@ -1,12 +1,40 @@
 {% extends "base.html" %}
 {% block content %}
+    <div>
+        <a href="/{{username}}">Home</a> | 
+        <a href="/{{username}}/concert">Concerts</a> | 
+        <a href="/{{username}}/clique">Cliques</a> | 
+        <a href="/{{username}}/profile">Profile</a> | 
+        <a href="/">Sign Out</a>
+    </div>
     <h1>Cliques</h1>
-    <h2>Your Cliques</h2>
+    {% if member | length > 0 %}
+        <h2>Your Cliques</h2>
+    {% endif %}
     <ul>
-        <li>sdfdsf</li>
+        {% for clq in member %}
+            <li>{{clq['name']}} - <a href="/{{username}}/clique/{{clq['cliqueId']}}">View</a> - <a href="/{{username}}/clique/{{clq['cliqueId']}}/leave">Leave</a></li>
+        {% endfor %}
     </ul>
-    <h2>Other Cliques</h2>
+    {% if cliques | length > 0 %}
+        <h2>Other Cliques</h2>
+    {% endif %}
     <ul>
-        <li>dsfsdfsf</li>
+        {% for clq in cliques %}
+            {% if clq['members'] %}
+                <li>{{clq['name']}}: <em>{{clq['genre']}}</em> - {{clq['members']}} members - <a href="/{{username}}/clique/{{clq['cliqueId']}}/join">Join</a></li>
+            {% else %}
+                <li>{{clq['name']}}: <em>{{clq['genre']}}</em> - 0 members - <a href="/{{username}}/clique/{{clq['cliqueId']}}/join">Join</a></li>
+            {% endif %}
+        {% endfor %}
     </ul>
+    <h3>Create a new clique:</h3>
+    <form action="" method="post">
+        <input type="text" placeholder="Name" name="name" value="{{ request.form.name }}">
+        <input type="text" placeholder="Genre" name="genre" value="{{ request.form.genre }}">
+        <input class="btn btn-default" type="submit" value="Create Clique">
+    </form>
+    {% if error %}
+        <p class="error"><strong>Error:</strong> {{ error }}
+    {% endif %}
 {% endblock %}

@@ -1,19 +1,51 @@
 {% extends "base.html" %}
 {% block content %}
+    <div>
+        <a href="/{{username}}">Home</a> | 
+        <a href="/{{username}}/concert">Concerts</a> | 
+        <a href="/{{username}}/clique">Cliques</a> | 
+        <a href="/{{username}}/profile">Profile</a> | 
+        <a href="/">Sign Out</a>
+    </div>
     <h1>{{concert['name']}}</h1>
     <ul>
-        <li>Location: {{concert['location']}}</li>
-        <li>Date: {{concert['concertDate']}}</li>
+        <li><strong>Location:</strong> {{location['name']}} ({{location['city']}}, {{location['state']}})</li>
+        <li><strong>Date:</strong> {{concert['concertDate']}}</li>
         {% if concert['genre'] != None %}
-        <li>Genre: {{concert['genre']}}</li>
+        <li><strong>Genre:</strong> {{concert['genre']}}</li>
         {% endif %}
         {% if concert['price'] != None %}
-        <li>Price: ${{concert['price']}}</li>
+        <li><strong>Price:</strong> ${{concert['price']}}</li>
         {% endif %}
         {% if concert['minAge'] != None %}
-        <li>Ages: {{concert['minAge']}}+</li>
+        <li><strong>Ages:</strong> {{concert['minAge']}}+</li>
         {% else %}
-        <li>All ages</li>
+        <li><strong>All ages</strong></li>
         {% endif %}
     </ul>
+    <h2>Artists:</h2>
+    <ul>
+        {% for artist in artists %}
+            <li>{{artist['name']}}</li>
+        {% endfor %}
+    </ul>
+    {% if isAttending == 0 %}
+        <h4><a href="/{{username}}/concert/{{concert['concertId']}}/attend">Mark as attending</a></h4>
+    {% else %}
+        <h4><a href="/{{username}}/concert/{{concert['concertId']}}/not-attend">Mark as not attending</a></h4>
+    {% endif %}
+    {% if cliques | length > 0 %}
+        <form action="" method="post">
+            <label for="clique_name">Share with one of your cliques:</label>
+            <select id="clique_name" name="clique_name">
+                {% for clq in cliques %}
+                <OPTION value={{clq['cliqueId']}}>{{clq['name']}}</OPTION>
+                {% endfor %}
+            </select>
+            <input class="btn btn-default" type="submit" value="Share Concert">
+        </form>
+        {% if error %}
+            <p class="error"><strong>Error:</strong> {{ error }}
+        {% endif %}
+    {% endif %}
 {% endblock %}

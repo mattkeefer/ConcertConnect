@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+    <div>
+        <a href="/{{username}}">Home</a> | 
+        <a href="/{{username}}/concert">Concerts</a> | 
+        <a href="/{{username}}/clique">Cliques</a> | 
+        <a href="/{{username}}/profile">Profile</a> | 
+        <a href="/">Sign Out</a>
+    </div>
+    <h1>{{clique['name']}}</h1>
+    <p>{{clique['genre']}}</p>
+    <h2>Members</h2>
+    <ul>
+        {% for member in members %}
+            <li>{{member['name']}}</li>
+        {% endfor %}
+    </ul>
+    {% if shared | length > 0 %}
+        <h2>Shared Concerts:</h2>
+    {% endif %}
+    <ul>
+        {% for concert in shared %}
+            <li><a href="/{{username}}/concert/{{concert['concert']}}">{{concert['name']}}</a></li>
+        {% endfor %}
+    </ul>
+    <br>
+{% endblock %}

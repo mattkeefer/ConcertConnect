@@ -1,10 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
+    <div>
+        <a href="/{{username}}">Home</a> | 
+        <a href="/{{username}}/concert">Concerts</a> | 
+        <a href="/{{username}}/clique">Cliques</a> | 
+        <a href="/{{username}}/profile">Profile</a> | 
+        <a href="/">Sign Out</a>
+    </div>
     <h1>Concerts</h1>
     <h2>Upcoming Shows</h2>
     {% for concert in concerts %}
     <ul>
-        <li><a href="/concert/{{concert['concertId']}}">{{concert['name']}}</a>: {{concert['location']}}, {{concert['concertDate']}}</li>
+        <li><a href="/{{username}}/concert/{{concert['concertId']}}">{{concert['name']}}</a>: <strong>({{locations[concert['location'] - 1]['city']}}, {{locations[concert['location'] - 1]['state']}})</strong> {{concert['concertDate']}}</li>
     </ul>
     {% endfor %}
 {% endblock %}
